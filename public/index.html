@@ -1,69 +1,8 @@
-<!doctype html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Realtime Chat</title>
-<link rel="stylesheet" href="/style.css">
-</head>
-<body>
-<section id="authPage" class="center">
-  <div class="card authCard">
-    <h1>Realtime Chat</h1>
-    <div class="tabs">
-      <button id="loginTab" class="selected">ログイン</button>
-      <button id="registerTab">新規登録</button>
-    </div>
+<!doctype html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Realtime Chat</title><link rel="stylesheet" href="/style.css"></head><body>
+<section id="authPage" class="center"><div class="card authCard"><h1>Realtime Chat</h1><div class="tabs"><button id="loginTab" class="selected">ログイン</button><button id="registerTab">新規登録</button></div><form id="authForm"><label>ID</label><input id="username" autocomplete="username" required maxlength="20" placeholder="例: sora123"><div id="displayWrap" class="hidden"><label>表示名</label><input id="displayName" maxlength="30" placeholder="表示名"></div><label>パスワード</label><input id="password" type="password" required minlength="6"><button id="authButton" class="mainButton">ログイン</button></form><div id="authMessage" class="error"></div></div></section>
+<section id="chatPage" class="hidden chatPage"><header><div><strong>Realtime Chat</strong><span id="online">オンライン: 0</span></div><div class="userArea"><img id="myAvatar" class="avatar clickable"><span id="myName"></span><button id="settingsButton">設定</button><button id="profileButton">プロフィール</button><button id="logoutButton">ログアウト</button></div></header><main id="messages"></main><div id="typing"></div><div id="replyBar" class="hidden"></div><form id="messageForm"><label class="fileButton">📷 <input id="photoFile" type="file" accept="image/*"></label><input id="messageInput" maxlength="2000" placeholder="メッセージ / @ユーザー名"><button>送信</button></form></section>
 
-    <form id="authForm">
-      <label>ID</label>
-      <input id="username" autocomplete="username" required maxlength="20" placeholder="例: sora123">
-      <div id="displayWrap" class="hidden">
-        <label>表示名</label>
-        <input id="displayName" maxlength="30" placeholder="チャットで表示する名前">
-      </div>
-      <label>パスワード</label>
-      <input id="password" type="password" autocomplete="current-password" required minlength="6">
-      <button id="authButton" class="mainButton">ログイン</button>
-    </form>
-    <div id="authMessage" class="error"></div>
-  </div>
-</section>
-
-<section id="chatPage" class="hidden chatPage">
-<header>
-  <div>
-    <strong>Realtime Chat</strong>
-    <span id="online">オンライン: 0</span>
-  </div>
-  <div class="userArea">
-    <img id="myAvatar" class="avatar">
-    <span id="myName"></span>
-    <button id="profileButton">プロフィール</button>
-    <button id="logoutButton">ログアウト</button>
-  </div>
-</header>
-<main id="messages"></main>
-<div id="typing"></div>
-<div id="replyBar" class="hidden"></div>
-<form id="messageForm">
-  <input id="messageInput" maxlength="1000" placeholder="メッセージを入力..." autocomplete="off">
-  <button>送信</button>
-</form>
-</section>
-
-<div id="profileModal" class="overlay hidden">
-  <div class="card">
-    <h2>プロフィール</h2>
-    <img id="preview" class="avatar big">
-    <input id="avatarFile" type="file" accept="image/png,image/jpeg,image/webp">
-    <input id="newDisplayName" maxlength="30" placeholder="表示名">
-    <button id="saveProfile">保存</button>
-    <button id="closeProfile">閉じる</button>
-    <div id="profileMessage" class="error"></div>
-  </div>
-</div>
-<script src="/socket.io/socket.io.js"></script>
-<script src="/app.js"></script>
-</body>
-</html>
+<div id="profileModal" class="overlay hidden"><div class="card"><h2>プロフィール</h2><img id="preview" class="avatar big"><input id="avatarFile" type="file" accept="image/*"><input id="newDisplayName" maxlength="30" placeholder="表示名"><textarea id="bio" maxlength="500" placeholder="自己紹介"></textarea><button id="saveProfile">保存</button><button id="closeProfile">閉じる</button><div id="profileMessage" class="error"></div></div></div>
+<div id="viewProfileModal" class="overlay hidden"><div class="card"><img id="viewAvatar" class="avatar huge"><h2 id="viewName"></h2><div id="viewId"></div><p id="viewBio"></p><button id="closeViewProfile">閉じる</button></div></div>
+<div id="settingsModal" class="overlay hidden"><div class="card"><h2>設定</h2><label>文字サイズ</label><input id="fontSize" type="range" min="12" max="24" value="16"><div id="fontSizeValue">16px</div><button id="closeSettings">閉じる</button></div></div>
+<script src="/socket.io/socket.io.js"></script><script src="/app.js"></script></body></html>

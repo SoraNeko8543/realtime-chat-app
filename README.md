@@ -1,22 +1,16 @@
-# Realtime Chat v3
-登録・ログインを作り直したRender対応版です。
+# Realtime Chat v4
 
-機能:
-- 新規アカウント作成
-- ログイン / ログアウト
-- ログイン状態Cookie
-- パスワードハッシュ化
-- アイコン変更
-- 表示名変更
-- リアルタイムチャット
-- リプライ
-- 自分のメッセージ削除
+追加:
+- アイコン最大8MB
+- 写真送信（最大12MB）
+- 設定から文字サイズ変更（12〜24px）
+- @ユーザー名形式のメンション表示
+- プロフィール自己紹介（500文字）
+- アイコン/名前タップでプロフィール表示
+- 返信・削除・リアルタイムチャット
 
 Render:
-Build Command: npm install
-Start Command: npm start
+Build: npm install
+Start: npm start
 
-重要:
-Renderの無料環境ではJSONファイルの保存は永続ストレージではありません。再デプロイやインスタンス交換でアカウントが消える可能性があります。実運用ではPostgreSQL等へ移行してください。
-
-RenderのEnvironment Variablesに AUTH_SECRET をランダムな長い文字列で設定すると、認証Cookieの署名を強化できます。
+注意: JSON保存はRender無料環境の永続DBではありません。アカウントや写真を長期保存する本番運用ではPostgreSQLやオブジェクトストレージへの移行を推奨します。
