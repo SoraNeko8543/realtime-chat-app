@@ -1,88 +1,16 @@
-const express = require("express");
-const http = require("http");
-const path = require("path");
-const fs = require("fs");
-const { Server } = require("socket.io");
-
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-const PORT = process.env.PORT || 3000;
-const HOST = "0.0.0.0";
-const dataDir = path.join(__dirname, "data");
-const dataFile = path.join(dataDir, "messages.json");
-
-fs.mkdirSync(dataDir, { recursive: true });
-
-function loadMessages() {
-  try {
-    if (!fs.existsSync(dataFile)) return [];
-    const data = JSON.parse(fs.readFileSync(dataFile, "utf8"));
-    return Array.isArray(data) ? data.slice(-500) : [];
-  } catch {
-    return [];
-  }
-}
-
-let messages = loadMessages();
-
-function saveMessages() {
-  try {
-    fs.writeFileSync(dataFile, JSON.stringify(messages.slice(-500), null, 2), "utf8");
-  } catch (err) {
-    console.error("Could not save messages:", err.message);
-  }
-}
-
-app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "realtime-chat-app" });
-});
-
-io.on("connection", (socket) => {
-  socket.emit("history", messages);
-
-  socket.on("join", (name) => {
-    const cleanName = String(name || "ゲスト").trim().slice(0, 30) || "ゲスト";
-    socket.data.name = cleanName;
-    socket.broadcast.emit("system", `${cleanName} が参加しました`);
-    io.emit("onlineCount", io.engine.clientsCount);
-  });
-
-  socket.on("chatMessage", (text) => {
-    const cleanText = String(text || "").trim().slice(0, 1000);
-    if (!cleanText) return;
-
-    const message = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: socket.data.name || "ゲスト",
-      text: cleanText,
-      time: new Date().toISOString()
-    };
-
-    messages.push(message);
-    messages = messages.slice(-500);
-    saveMessages();
-    io.emit("chatMessage", message);
-  });
-
-  socket.on("typing", (isTyping) => {
-    socket.broadcast.emit("typing", {
-      name: socket.data.name || "ゲスト",
-      isTyping: Boolean(isTyping)
-    });
-  });
-
-  socket.on("disconnect", () => {
-    if (socket.data.name) {
-      socket.broadcast.emit("system", `${socket.data.name} が退出しました`);
-    }
-    io.emit("onlineCount", io.engine.clientsCount);
-  });
-});
-
-server.listen(PORT, HOST, () => {
-  console.log(`Chat server listening on http://${HOST}:${PORT}`);
-});
+const express=require("express"),http=require("http"),path=require("path"),fs=require("fs"),crypto=require("crypto"),bcrypt=require("bcryptjs"),session=require("express-session"),{Server}=require("socket.io");
+const app=express(),server=http.createServer(app),io=new Server(server),PORT=process.env.PORT||3000,D=path.join(__dirname,"data"),UF=path.join(D,"users.json"),MF=path.join(D,"messages.json");
+fs.mkdirSync(D,{recursive:true}); const rd=(f,d)=>{try{return fs.existsSync(f)?JSON.parse(fs.readFileSync(f,"utf8")):d}catch{return d}},wr=(f,d)=>fs.writeFileSync(f,JSON.stringify(d,null,2));
+let users=rd(UF,[]),messages=rd(MF,[]).slice(-500); const pub=u=>({id:u.id,username:u.username,displayName:u.displayName,avatar:u.avatar||""}),clean=(v,n=1000)=>String(v??"").trim().slice(0,n);
+app.use(express.json({limit:"2mb"}));app.use(session({secret:process.env.SESSION_SECRET||"change-me",resave:false,saveUninitialized:false,cookie:{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",maxAge:604800000}}));app.use(express.static(path.join(__dirname,"public")));
+const auth=(q,s,n)=>{let u=users.find(x=>x.id===q.session.userId);if(!u)return s.status(401).json({error:"ログインが必要です"});q.user=u;n()};
+app.get("/api/me",(q,s)=>{let u=users.find(x=>x.id===q.session.userId);s.json({user:u?pub(u):null})});
+app.post("/api/register",async(q,s)=>{let username=clean(q.body.username,20).toLowerCase(),displayName=clean(q.body.displayName,30)||username,password=String(q.body.password||"");if(!/^[a-z0-9_]{3,20}$/.test(username))return s.status(400).json({error:"IDは英数字と_の3〜20文字"});if(password.length<6)return s.status(400).json({error:"パスワードは6文字以上"});if(users.some(u=>u.username===username))return s.status(409).json({error:"そのIDは使用済み"});let u={id:crypto.randomUUID(),username,displayName,passwordHash:await bcrypt.hash(password,12),avatar:""};users.push(u);wr(UF,users);q.session.userId=u.id;s.json({user:pub(u)})});
+app.post("/api/login",async(q,s)=>{let u=users.find(x=>x.username===clean(q.body.username,20).toLowerCase());if(!u||!(await bcrypt.compare(String(q.body.password||""),u.passwordHash)))return s.status(401).json({error:"IDまたはパスワードが違います"});q.session.userId=u.id;s.json({user:pub(u)})});
+app.post("/api/logout",(q,s)=>q.session.destroy(()=>s.json({ok:true})));
+app.put("/api/profile",auth,(q,s)=>{q.user.displayName=clean(q.body.displayName,30)||q.user.displayName;q.user.avatar=String(q.body.avatar||"");if(q.user.avatar.length>350000)return s.status(400).json({error:"画像が大きすぎます"});wr(UF,users);s.json({user:pub(q.user)})});
+app.get("/api/messages",auth,(q,s)=>s.json(messages));
+app.post("/api/messages",auth,(q,s)=>{let text=clean(q.body.text);if(!text)return s.status(400).json({error:"空のメッセージ"});let t=messages.find(m=>m.id===q.body.replyTo),m={id:crypto.randomUUID(),userId:q.user.id,username:q.user.username,displayName:q.user.displayName,avatar:q.user.avatar||"",text,reply:t?{id:t.id,username:t.username,text:t.text}:null,time:new Date().toISOString()};messages.push(m);messages=messages.slice(-500);wr(MF,messages);io.emit("message:new",m);s.json(m)});
+app.delete("/api/messages/:id",auth,(q,s)=>{let i=messages.findIndex(m=>m.id===q.params.id);if(i<0)return s.status(404).json({error:"見つかりません"});if(messages[i].userId!==q.user.id)return s.status(403).json({error:"自分のメッセージだけ削除できます"});messages.splice(i,1);wr(MF,messages);io.emit("message:delete",q.params.id);s.json({ok:true})});
+io.on("connection",x=>{x.on("join",id=>{let u=users.find(a=>a.id===id);if(u)x.data.name=u.displayName;io.emit("online",io.engine.clientsCount)});x.on("typing",v=>x.broadcast.emit("typing",{name:x.data.name||"ユーザー",value:!!v}));x.on("disconnect",()=>io.emit("online",io.engine.clientsCount))});
+server.listen(PORT,"0.0.0.0",()=>console.log("listening",PORT));

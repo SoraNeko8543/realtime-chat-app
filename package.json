@@ -1,15 +1,1 @@
-{
-  "name": "realtime-chat-app",
-  "version": "1.1.0",
-  "private": true,
-  "description": "Simple real-time chat app with Node.js and Socket.IO, ready for Render",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
-  },
-  "dependencies": {
-    "express": "^5.1.0",
-    "socket.io": "^4.8.1"
-  }
-}
+{"name":"realtime-chat-app","version":"2.0.0","private":true,"main":"server.js","scripts":{"start":"node server.js"},"dependencies":{"bcryptjs":"^3.0.2","express":"^5.1.0","express-session":"^1.18.2","socket.io":"^4.8.1"}}
