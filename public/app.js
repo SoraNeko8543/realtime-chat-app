@@ -1,1 +1,107 @@
-const $=x=>document.getElementById(x);let me=null,reg=false,reply=null,socket=io();async function api(u,o={}){let r=await fetch(u,{headers:{"Content-Type":"application/json"},...o}),d=await r.json();if(!r.ok)throw Error(d.error);return d}function av(a,n){return a||`https://ui-avatars.com/api/?name=${encodeURIComponent(n||"?")}&background=334155&color=fff`}function enter(u){me=u;$("auth").classList.add("hide");$("app").classList.remove("hide");$("mn").textContent=u.displayName;$("ava").src=av(u.avatar,u.displayName);socket.emit("join",u.id)}async function load(){let d=await api("/api/messages");$("msgs").innerHTML="";d.forEach(render);$("msgs").scrollTop=$("msgs").scrollHeight}function render(m){let x=document.createElement("div");x.className="msg"+(m.userId===me.id?" mine":"");x.dataset.id=m.id;let im=document.createElement("img");im.className="av sm";im.src=av(m.avatar,m.displayName);let b=document.createElement("div");b.className="bubble";let meta=document.createElement("div");meta.className="meta";meta.textContent=`${m.displayName} (@${m.username}) · ${new Date(m.time).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}`;if(m.reply){let q=document.createElement("div");q.className="reply";q.textContent=`↩ ${m.reply.username}: ${m.reply.text}`;b.append(q)}let body=document.createElement("div");body.textContent=m.text;let a=document.createElement("div");a.className="actions";let r=document.createElement("button");r.textContent="返信";r.onclick=()=>{reply=m.id;$("rb").textContent="返信中："+m.text;$("rb").classList.remove("hide");$("mi").focus()};a.append(r);if(m.userId===me.id){let d=document.createElement("button");d.textContent="削除";d.onclick=async()=>{if(confirm("削除しますか？"))try{await api("/api/messages/"+m.id,{method:"DELETE"})}catch(e){alert(e.message)}};a.append(d)}b.append(meta,body,a);x.append(im,b);$("msgs").append(x)}$("lt").onclick=()=>mode(false);$("rt").onclick=()=>mode(true);function mode(v){reg=v;$("dn").classList.toggle("hide",!v);$("ab").textContent=v?"新規登録":"ログイン";$("ae").textContent=""}$("af").onsubmit=async e=>{e.preventDefault();try{let d=await api(reg?"/api/register":"/api/login",{method:"POST",body:JSON.stringify({username:$("u").value,password:$("p").value,displayName:$("dn").value})});enter(d.user);load()}catch(e){$("ae").textContent=e.message}};$("sf").onsubmit=async e=>{e.preventDefault();let t=$("mi").value.trim();if(!t)return;try{await api("/api/messages",{method:"POST",body:JSON.stringify({text:t,replyTo:reply})});$("mi").value="";reply=null;$("rb").classList.add("hide")}catch(e){alert(e.message)}};$("mi").oninput=()=>socket.emit("typing",!!$("mi").value);socket.on("message:new",m=>{render(m);$("msgs").scrollTop=$("msgs").scrollHeight});socket.on("message:delete",id=>document.querySelector(`[data-id="${CSS.escape(id)}"]`)?.remove());socket.on("online",n=>$("on").textContent="オンライン:"+n);socket.on("typing",d=>$("ty").textContent=d.value?d.name+" が入力中...":"");$("lo").onclick=async()=>{await api("/api/logout",{method:"POST"});location.reload()};$("pb").onclick=()=>{$("pname").value=me.displayName;$("pv").src=av(me.avatar,me.displayName);$("pm").classList.remove("hide")};$("close").onclick=()=>$("pm").classList.add("hide");$("file").onchange=e=>{let f=e.target.files[0];if(!f)return;if(f.size>250000)return $("pe").textContent="250KB以下にしてください";let r=new FileReader();r.onload=()=>{$("pv").src=r.result;$("pv").dataset.x=r.result};r.readAsDataURL(f)};$("save").onclick=async()=>{try{let d=await api("/api/profile",{method:"PUT",body:JSON.stringify({displayName:$("pname").value,avatar:$("pv").dataset.x||me.avatar})});enter(d.user);$("pm").classList.add("hide");load()}catch(e){$("pe").textContent=e.message}};mode(false);api("/api/me").then(d=>{if(d.user){enter(d.user);load()}})
+const $=id=>document.getElementById(id);
+let registerMode=false,currentUser=null,replyId=null;
+const socket=io();
+
+async function api(url,options={}){
+  const opts={credentials:"same-origin",...options};
+  opts.headers={"Content-Type":"application/json",...(options.headers||{})};
+  const res=await fetch(url,opts);
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.error||"サーバーエラー");
+  return data;
+}
+function avatar(src,name){
+  return src||`https://ui-avatars.com/api/?name=${encodeURIComponent(name||"?")}&background=334155&color=fff`;
+}
+function showAuth(reg){
+  registerMode=reg;
+  $("loginTab").classList.toggle("selected",!reg);
+  $("registerTab").classList.toggle("selected",reg);
+  $("displayWrap").classList.toggle("hidden",!reg);
+  $("authButton").textContent=reg?"アカウントを作成":"ログイン";
+  $("authMessage").textContent="";
+  $("password").value="";
+}
+function enter(user){
+  currentUser=user;
+  $("authPage").classList.add("hidden");
+  $("chatPage").classList.remove("hidden");
+  $("myName").textContent=user.displayName;
+  $("myAvatar").src=avatar(user.avatar,user.displayName);
+  socket.emit("join",user.id);
+}
+async function loadMessages(){
+  const d=await api("/api/messages");
+  $("messages").innerHTML="";
+  d.forEach(renderMessage);
+  $("messages").scrollTop=$("messages").scrollHeight;
+}
+function renderMessage(m){
+  const row=document.createElement("div");
+  row.className="message"+(m.userId===currentUser.id?" mine":"");
+  row.dataset.id=m.id;
+  const img=document.createElement("img");img.className="avatar";img.src=avatar(m.avatar,m.displayName);
+  const b=document.createElement("div");b.className="bubble";
+  const meta=document.createElement("div");meta.className="meta";
+  meta.textContent=`${m.displayName} (@${m.username}) · ${new Date(m.time).toLocaleTimeString("ja-JP",{hour:"2-digit",minute:"2-digit"})}`;
+  b.append(meta);
+  if(m.reply){const r=document.createElement("div");r.className="reply";r.textContent=`↩ ${m.reply.username}: ${m.reply.text}`;b.append(r)}
+  const body=document.createElement("div");body.className="body";body.textContent=m.text;b.append(body);
+  const actions=document.createElement("div");actions.className="actions";
+  const rp=document.createElement("button");rp.textContent="返信";rp.onclick=()=>startReply(m);actions.append(rp);
+  if(m.userId===currentUser.id){const del=document.createElement("button");del.textContent="削除";del.onclick=()=>deleteMessage(m.id);actions.append(del)}
+  b.append(actions);row.append(img,b);$("messages").append(row);
+}
+function startReply(m){replyId=m.id;$("replyBar").innerHTML=`返信: ${escapeHtml(m.displayName)}「${escapeHtml(m.text.slice(0,70))}」 <button id="cancelReply">×</button>`;$("replyBar").classList.remove("hidden");$("cancelReply").onclick=cancelReply;$("messageInput").focus()}
+function cancelReply(){replyId=null;$("replyBar").classList.add("hidden")}
+function escapeHtml(s){const d=document.createElement("div");d.textContent=s;return d.innerHTML}
+async function deleteMessage(id){if(!confirm("このメッセージを削除しますか？"))return;try{await api("/api/messages/"+id,{method:"DELETE"})}catch(e){alert(e.message)}}
+
+$("loginTab").onclick=()=>showAuth(false);
+$("registerTab").onclick=()=>showAuth(true);
+
+$("authForm").onsubmit=async e=>{
+  e.preventDefault();
+  $("authMessage").textContent="処理中...";
+  const body={username:$("username").value.trim(),password:$("password").value};
+  if(registerMode)body.displayName=$("displayName").value.trim();
+  try{
+    const d=await api(registerMode?"/api/register":"/api/login",{method:"POST",body:JSON.stringify(body)});
+    enter(d.user);
+    await loadMessages();
+  }catch(err){$("authMessage").textContent=err.message}
+};
+
+$("messageForm").onsubmit=async e=>{
+  e.preventDefault();
+  const input=$("messageInput"),value=input.value.trim();
+  if(!value)return;
+  try{
+    await api("/api/messages",{method:"POST",body:JSON.stringify({text:value,replyTo:replyId})});
+    input.value="";cancelReply();
+  }catch(err){alert(err.message)}
+};
+$("messageInput").oninput=()=>socket.emit("typing",!!$("messageInput").value);
+socket.on("message:new",m=>{renderMessage(m);$("messages").scrollTop=$("messages").scrollHeight});
+socket.on("message:delete",id=>document.querySelector(`[data-id="${CSS.escape(id)}"]`)?.remove());
+socket.on("online",n=>$("online").textContent=`オンライン: ${n}`);
+socket.on("typing",d=>$("typing").textContent=d.value?`${d.name} が入力中...`:"");
+
+$("logoutButton").onclick=async()=>{await api("/api/logout",{method:"POST"});location.reload()};
+$("profileButton").onclick=()=>{$("newDisplayName").value=currentUser.displayName;$("preview").src=avatar(currentUser.avatar,currentUser.displayName);$("profileMessage").textContent="";$("profileModal").classList.remove("hidden")};
+$("closeProfile").onclick=()=>$("profileModal").classList.add("hidden");
+$("avatarFile").onchange=e=>{
+  const f=e.target.files[0];if(!f)return;
+  if(f.size>250000){$("profileMessage").textContent="画像は250KB以下にしてください";return}
+  const r=new FileReader();r.onload=()=>{$("preview").src=r.result;$("preview").dataset.image=r.result};r.readAsDataURL(f);
+};
+$("saveProfile").onclick=async()=>{
+  try{
+    const d=await api("/api/profile",{method:"PUT",body:JSON.stringify({displayName:$("newDisplayName").value.trim(),avatar:$("preview").dataset.image||currentUser.avatar})});
+    currentUser=d.user;$("myName").textContent=currentUser.displayName;$("myAvatar").src=avatar(currentUser.avatar,currentUser.displayName);
+    $("profileModal").classList.add("hidden");await loadMessages();
+  }catch(e){$("profileMessage").textContent=e.message}
+};
+
+showAuth(false);
+api("/api/me").then(async d=>{if(d.user){enter(d.user);await loadMessages()}}).catch(()=>{});

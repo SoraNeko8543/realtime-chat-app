@@ -1,1 +1,13 @@
-{"name":"realtime-chat-app","version":"2.0.0","private":true,"main":"server.js","scripts":{"start":"node server.js"},"dependencies":{"bcryptjs":"^3.0.2","express":"^5.1.0","express-session":"^1.18.2","socket.io":"^4.8.1"}}
+{
+  "name":"realtime-chat-app",
+  "version":"3.0.0",
+  "private":true,
+  "main":"server.js",
+  "scripts":{"start":"node server.js"},
+  "dependencies":{
+    "bcryptjs":"^3.0.2",
+    "cookie-parser":"^1.4.7",
+    "express":"^5.1.0",
+    "socket.io":"^4.8.1"
+  }
+}
